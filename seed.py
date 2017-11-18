@@ -15,7 +15,7 @@ train_labels = "./traindata.label"
 
 #Stop-words
 stop_words = nltk.corpus.stopwords.words('english')
-more_stop_words = [",",".",":","@","#",";","&","-","(",")"]
+more_stop_words = [",",".",":","@","#",";","&","-","(",")","user","...", "!", "'s"]
 stop_words.extend(more_stop_words)
 
 #Read data and tokenize it
@@ -29,7 +29,8 @@ word_count = defaultdict(float)
 seed = {}
 
 for (line,label) in zip(content.split("\n")[:10000],labels.split("\n")[:10000]):     
-    for w in nltk.word_tokenize(line):
+    for w in nltk.word_tokenize():
+        w = w.lower()
         if w not in stop_words: # Remove stop-words
             if(label not in seed):
                 seed[label]=defaultdict(float)
@@ -39,5 +40,7 @@ result = []
 i=0
 for l,w in seed.items():
     result.append(sorted(w.items() , key=lambda t : t[1] , reverse=True))
+    
+
     
 ###### From this, we now have the top words of each category and we can use them to associate features.
