@@ -2,16 +2,16 @@
 from collections import defaultdict
 import nltk
 import codecs
-from seeds import getSeedWords
+from seed import getSeedWords
 
 # Initialize paths for training data set
-train_data = "./traindata.text"
-train_labels = "./traindata.label"
+train_data = "./traindata/traindata.text"
+train_labels = "./traindata/traindata.labels"
+test_data = "./testdata/testdata.text"
+test_labels = "./testdata/testdata.labels"
 
 def fake_features(word):
     return {'fake': word}
-
-
 
 #Stop-words
 
@@ -30,9 +30,7 @@ document = []
 all_words = []
 seed_words = getSeedWords(content,labels)
 
-
-
-for (line,label) in zip(content.split("\n")[:10000],labels.split("\n")[:10000]):
+for (line,label) in zip(content.split("\n"),labels.split("\n")):
     tweet_words = []
     for w in nltk.word_tokenize(line):
         w = w.lower()
@@ -64,3 +62,20 @@ d,c = document[24]
 print d
 print classifier.classify(document_features(d))
 
+fpText = codecs.open(test_data,'r',encoding='utf8')
+fpLabel = codecs.open(test_labels,'r',encoding='utf8')
+content = fpText.read()
+labels  = fpLabel.read()
+document = []
+
+for (line,label) in zip(content.split("\n"),labels.split("\n")):
+    tweet_words = []
+    for w in nltk.word_tokenize(line):
+        w = w.lower()
+        if w not in stop_words: # Remove stop-words
+            #labelled_words.append((w,label))
+            tweet_words.append(w)
+    document.append((tweet_words,label))
+
+test_set = [(document_features(d), c) for (d,c) in document]
+print "Acc: ",nltk.classify.accuracy(classifier, test_set)
