@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
-
 # Twitter emoji prediction 
 from collections import defaultdict
 import nltk
 import codecs
 import string
 from seeds import getSeedWords
+from confusion_matrix import getAccuracy
 
 # Initialize paths for training data set
 train_data = "./traindata.text"
@@ -34,7 +33,7 @@ document = []
 all_words = []
 seed_words = getSeedWords(content,labels)
 
-for (line,label) in zip(content.split("\n")[:1000],labels.split("\n")[:1000]):
+for (line,label) in zip(content.split("\n")[:10000],labels.split("\n")[:10000]):
     tweet_words = []
     for w in nltk.word_tokenize(line):
         w = w.lower()
@@ -50,7 +49,7 @@ for (line,label) in zip(content.split("\n")[:1000],labels.split("\n")[:1000]):
 
 freq_words = nltk.FreqDist(w.lower() for w in all_words)
 freq_words = sorted(freq_words.keys(), key=freq_words.get, reverse = True)
-word_features = list(freq_words)[:100]
+word_features = list(freq_words)[:5000]
 
 def document_features(document): 
     document_words = set(document) 
@@ -81,12 +80,14 @@ fpText.close()
 fpLabel.close()
 document = []
 
-for (line,label) in zip(content.split("\n")[:200],labels.split("\n")[:200]):
+for (line,label) in zip(content.split("\n")[:10],labels.split("\n")[:10]):
     tweet_words = []
     for w in nltk.word_tokenize(line):
         w = w.lower()
         if w not in stop_words: # Remove stop-words
-            tweet_words.append(w)
+             if w not in string.punctuation:
+                if w not in string.digits:
+                    tweet_words.append(w)
     document.append((tweet_words,label))
 
 test_set = [(document_features(d), c) for (d,c) in document]
@@ -96,10 +97,11 @@ classifier.show_most_informative_features(5)
 
 errors = []
 correct = []
-for (line, label) in zip(content.split("\n")[:200],labels.split("\n")[:200]):
-    guess = classifier.classify(document_features(line))
-    if guess != label:
-        errors.append( (label, guess, line, document_features(line)) )
-    else:
-        correct.append((label,guess,line))
+guess = []
+for (line, label) in zip(content.split("\n")[:10],labels.split("\n")[:10]):
+    guess.append(classifier.classify(document_features(line)))
+    
+accuracy,precision, recall = getAccuracy(guess,labels.split("\n")[:10])
+    
 
+   
