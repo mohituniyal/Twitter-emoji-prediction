@@ -7,7 +7,7 @@ Created on Mon Nov 20 11:00:21 2017
 """
 
 # Twitter emoji prediction 
-from collections import defaultdict
+#from collections import defaultdict
 import nltk
 import codecs
 from bs4 import BeautifulSoup
@@ -244,4 +244,9 @@ output = []
 output = pd.DataFrame( data={"id":idsList, "prediction:":result, "gold-label:":labelsList} )
 output.to_csv( "Word2Vec_AverageVectors.csv", index=False, quoting=3 )
 
-for a,b in zip(result,labelsList)
+acc = 0.0
+for a,b in zip(result,labelsList):
+    if a == b:
+        acc += 1.0
+
+print "Test set accuracy=", acc / len(result)
