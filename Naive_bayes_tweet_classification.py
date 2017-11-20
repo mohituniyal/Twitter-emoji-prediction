@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sat Nov 18 20:53:09 2017
-
-@author: shrut
-"""
 
 # Twitter emoji prediction 
 from collections import defaultdict
@@ -22,16 +17,17 @@ def fake_features(word):
     return {'fake': word}
 
 #Stop-words
-
 stop_words = nltk.corpus.stopwords.words('english')
 more_stop_words = [",",".",":","@","#",";","&","-","(",")","user","...", "!", "'s","?","--","|","``","''","[","]","'","$",]
 stop_words.extend(more_stop_words)
     
 #Read data and tokenize it
-fpText = codecs.open(train_data,'r',encoding='utf8')
+fpText  = codecs.open(train_data,'r',encoding='utf8')
 fpLabel = codecs.open(train_labels,'r',encoding='utf8')
 content = fpText.read()
 labels  = fpLabel.read()
+fpText.close()
+fpLabel.close()
 featuresets = []
 labelled_words = []
 document = []
@@ -73,14 +69,16 @@ featuresets = [(document_features(d), c) for (d,c) in document]
 
 classifier = nltk.NaiveBayesClassifier.train(featuresets)
 
-d,c = document[24]
-print d
-print classifier.classify(document_features(d))
+#d,c = document[24]
+#print d
+#print classifier.classify(document_features(d))
 
-fpText = codecs.open(test_data,'r',encoding='utf8')
+fpText  = codecs.open(test_data,'r',encoding='utf8')
 fpLabel = codecs.open(test_labels,'r',encoding='utf8')
 content = fpText.read()
 labels  = fpLabel.read()
+fpText.close()
+fpLabel.close()
 document = []
 
 for (line,label) in zip(content.split("\n")[:200],labels.split("\n")[:200]):
@@ -88,12 +86,11 @@ for (line,label) in zip(content.split("\n")[:200],labels.split("\n")[:200]):
     for w in nltk.word_tokenize(line):
         w = w.lower()
         if w not in stop_words: # Remove stop-words
-            #labelled_words.append((w,label))
             tweet_words.append(w)
     document.append((tweet_words,label))
 
 test_set = [(document_features(d), c) for (d,c) in document]
-print "Acc: ",nltk.classify.accuracy(classifier, test_set)
+print "Accuracy: ",nltk.classify.accuracy(classifier, test_set)
 
 classifier.show_most_informative_features(5)
 
@@ -105,5 +102,4 @@ for (line, label) in zip(content.split("\n")[:200],labels.split("\n")[:200]):
         errors.append( (label, guess, line, document_features(line)) )
     else:
         correct.append((label,guess,line))
-
 
