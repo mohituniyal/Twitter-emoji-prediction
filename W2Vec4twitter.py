@@ -243,10 +243,124 @@ labelsList = te_labels.strip().split("\n")
 output = []
 output = pd.DataFrame( data={"id":idsList, "prediction:":result, "gold-label:":labelsList} )
 output.to_csv( "Word2Vec_AverageVectors.csv", index=False, quoting=3 )
-
 acc = 0.0
 for a,b in zip(result,labelsList):
     if a == b:
         acc += 1.0
 
 print "Test set accuracy=", acc / len(result)
+
+
+
+#######Clustering attempt
+
+
+
+from sklearn.cluster import KMeans
+import time
+
+start = time.time() # Start time
+
+# Set "k" (num_clusters) to be 1/5th of the vocabulary size, or an
+# average of 5 words per cluster
+word_vectors = model.wv.syn0
+num_clusters = word_vectors.shape[0] / 5
+
+# Initalize a k-means object and use it to extract centroids
+kmeans_clustering = KMeans( n_clusters = num_clusters )
+idx = kmeans_clustering.fit_predict(word_vectors)
+
+# Get the end time and print how long the process took
+end = time.time()
+elapsed = end - start
+print "Time taken for K Means clustering: ", elapsed, "seconds."
+
+
+
+# Create a Word / Index dictionary, mapping each vocabulary word to
+# a cluster number                                                                                            
+word_centroid_map = dict(zip( model.wv.index2word, idx ))
+
+
+'''
+# For the first 10 clusters
+for cluster in xrange(0,10):
+    #
+    # Print the cluster number  
+    print "\nCluster %d" % cluster
+    #
+    # Find all of the words for that cluster number, and print them out
+    words = []
+    for i in xrange(0,len(word_centroid_map.values())):
+        if( word_centroid_map.values()[i] == cluster ):
+            words.append(word_centroid_map.keys()[i])
+    print words
+'''
+    
+def create_bag_of_centroids( wordlist, word_centroid_map ):
+    #
+    # The number of clusters is equal to the highest cluster index
+    # in the word / centroid map
+    num_centroids = max( word_centroid_map.values() ) + 1
+    #
+    # Pre-allocate the bag of centroids vector (for speed)
+    bag_of_centroids = np.zeros( num_centroids, dtype="float32" )
+    #
+    # Loop over the words in the review. If the word is in the vocabulary,
+    # find which cluster it belongs to, and increment that cluster count 
+    # by one
+    for word in wordlist:
+        if word in word_centroid_map:
+            index = word_centroid_map[word]
+            bag_of_centroids[index] += 1
+    #
+    # Return the "bag of centroids"
+    return bag_of_centroids
+
+# Pre-allocate an array for the training set bags of centroids (for speed)
+train_centroids = np.zeros( (len(sentences), num_clusters), \
+    dtype="float32" )
+
+# Transform the training set reviews into bags of centroids
+counter = 0
+for review in sentences:
+    train_centroids[counter] = create_bag_of_centroids( review, \
+        word_centroid_map )
+    counter += 1
+
+# Repeat for test reviews 
+test_centroids = np.zeros(( len(clean_test_reviews), num_clusters), \
+    dtype="float32" )
+
+counter = 0
+for review in clean_test_reviews:
+    test_centroids[counter] = create_bag_of_centroids( review, \
+        word_centroid_map )
+    counter += 1
+    
+# Fit a random forest and extract predictions 
+forest = RandomForestClassifier(n_estimators = 100)
+
+# Fitting the forest may take a few minutes
+print "Fitting a random forest to labeled training data..."
+forest2 = forest.fit(train_centroids,listlabels)
+result2 = forest.predict(test_centroids)
+
+# Write the test results 
+outputCluster = pd.DataFrame(data={"id":idsList, "prediction:":result2, "gold-label:":labelsList})
+outputCluster.to_csv( "BagOfCentroids.csv", index=False, quoting=3 )
+
+#output = []
+#output = pd.DataFrame( data={"id":idsList, "prediction:":result, "gold-label:":labelsList} )
+#output.to_csv( "Word2Vec_AverageVectors.csv", index=False, quoting=3 )
+acc2 = 0.0
+for a,b in zip(result2,labelsList):
+    if a == b:
+        acc2 += 1.0
+
+print "Test set accuracy with clustering=", acc2 / len(result2)
+
+
+from confusion_matrix import getAccuracy
+(accuracy,presion,recall) = getAccuracy(result,labelsList)
+(accuracy,presion,recall) = getAccuracy(result2,labelsList)
