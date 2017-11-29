@@ -52,7 +52,7 @@ def review_to_wordlist( review, remove_stopwords=False ):
     return(words)
 
 # Define a function to split a review into parsed sentences
-def review_to_sentences( review, tokenizer, remove_stopwords=False ):
+def review_to_sentences( review, remove_stopwords=False ):
     # Function to split a review into parsed sentences. Returns a 
     # list of sentences, where each sentence is a list of words
     #
@@ -134,10 +134,10 @@ def getAvgFeatureVecs(reviews, model, num_features):
     return reviewFeatureVecs
 
 
-def getKwordVecs(k=1):
+def getKwordVecs(k=1,file_name="balanced_traindata.text"):
     
     # Initialize paths for training data set
-    train_data = "balanced_traindata.text"
+    train_data = file_name
     #train_labels = "traindata.labels"
     
     #Open Training files, get content and close files
@@ -151,11 +151,11 @@ def getKwordVecs(k=1):
     print "All set with the files now"
     
     # Load the punkt tokenizer
-    tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+    #tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
     
     sentences = []  # Initialize an empty list of sentences
     print "Parsing sentences from training set"
-    sentences = review_to_sentences(tr_data, tokenizer)
+    sentences = review_to_sentences(tr_data)
     
     #print "len of sentences:",len(sentences)
     
@@ -180,13 +180,13 @@ def getKwordVecs(k=1):
     # Initialize and train the model (this will take some time)
     
     print "Training model..."
-    model = word2vec.Word2Vec(sentences, workers=num_workers, \
+    w2v_model = word2vec.Word2Vec(sentences, workers=num_workers, \
                 size=num_features, min_count = min_word_count, \
                 window = context, sample = downsampling)
     
     # If you don't plan to train the model any further, calling 
     # init_sims will make the model much more memory-efficient.
-    model.init_sims(replace=True)
+    w2v_model.init_sims(replace=True)
     
     # It can be helpful to create a meaningful model name and 
     # save the model for later use. You can load it later using Word2Vec.load()
@@ -201,6 +201,6 @@ def getKwordVecs(k=1):
     #clean_train_reviews = review_to_sentences( tr_data, tokenizer, \
             #remove_stopwords=True )
     
-    trainDataVecs = getAvgFeatureVecs( sentences[:k], model, num_features )
-    return trainDataVecs
+    trainDataVecs = getAvgFeatureVecs( sentences[:k], w2v_model, num_features )
+    return (w2v_model, trainDataVecs)
 

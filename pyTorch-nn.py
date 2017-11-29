@@ -10,8 +10,9 @@ Created on Wed Nov 29 14:04:59 2017
 from __future__ import print_function
 import torch
 from torch.autograd import Variable
-from getKvecs import getKwordVecs
+import getKvecs
 import numpy as np
+import codecs
 
 # N is batch size; D_in is input dimension;
 # H is hidden dimension; D_out is output dimension.
@@ -21,11 +22,12 @@ N, D_in, H, D_out = 1000, 300, 10, 20
 
 dtype = torch.FloatTensor
 
-vec = getKwordVecs(k=N)
+w2v_model, vec = getKvecs.getKwordVecs(k=N,file_name="./traindata.text")
+
 #vec_tensor = torch.from_numpy(vec)
 
 ######
-train_labels = "balanced_trainlabel.label"
+train_labels = "traindata.label"
 fpLabel = open(train_labels,'r')
 fpdata = fpLabel.read()
 fpLabel.close()
@@ -88,6 +90,40 @@ for t in range(1000):
     # we can access its data and gradients like we did before.
     for param in model.parameters():
         param.data -= learning_rate * param.grad.data
-        
-model(x[23])
+
+model(x[23])        
+test_data = "./testdata.text"
+test_labels = "./testdata.label"
+
+fpText  = codecs.open(test_data,'r',encoding='utf8')
+fpLabel = open(test_labels,'r')
+content = fpText.read()
+labels  = fpLabel.read()
+fpText.close()
+fpLabel.close()
+
+sentences = getKvecs.review_to_sentences(content,False)
+
+test_vec = getKvecs.getAvgFeatureVecs(sentences,w2v_model,300)
+
+x_test = Variable(torch.from_numpy(test_vec), requires_grad=False)
+
+gold_labels = labels.split("\n")
+correct = 0
+count = 0
+
+for x in x_test:
+    pred = model(x)
+    n = pred.data.numpy()
+    i=n.argmax()
+    if(i==int(gold_labels[count])):
+        correct +=1
+    count+=1
+
+
+
+
+
+
+
 
