@@ -18,7 +18,7 @@ N, D_in, H, D_out = 1000, 300, 10, 20
 vec = getKwordVecs(k=N)
 #vec_tensor = torch.from_numpy(vec)
 
-######
+######s
 train_labels = "traindata.label"
 fpLabel = open(train_labels,'r')
 fpdata = fpLabel.read()
@@ -48,19 +48,26 @@ w1 = Variable(torch.randn(D_in,  H).type(dtype), requires_grad=True)
 w2 = Variable(torch.randn(H, D_out).type(dtype), requires_grad=True)
 
 lr = 1e-6
-g = np.zeros((N,1),dtype=float)
-for i in range(N):
-    g[i] = (float(fpdata[i]))
+g = np.zeros((N),dtype=int)
+#for i in range(N):
+    #g[i] = (int(fpdata[i]))
 #!!!!!!!!!!!!!!!!
-gold = Variable(torch.from_numpy(g).type(dtype),requires_grad=False)
+#gold = Variable(torch.from_numpy(g).type(dtype),requires_grad=False)
 
-for t in range(500):
+for t in range(10000):
     h      = x.mm(w1)
     h_relu = h.clamp(min=0)
     y_pred  =h_relu.mm(w2)
     
+    #for i in range(N):
+       # gold[i] = y_pred[:][g[i]]
     
-    loss = (y_pred - gold).pow(2).sum()
+    
+    loss = (y_pred - ypred[gold]).clamp(min=0).sum()
+    
+    
+    
+    
     #loss = 
     print (t,loss.data[0])
     

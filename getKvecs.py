@@ -137,7 +137,7 @@ def getAvgFeatureVecs(reviews, model, num_features):
 def getKwordVecs(k=1):
     
     # Initialize paths for training data set
-    train_data = "traindata.text"
+    train_data = "balanced_traindata.text"
     #train_labels = "traindata.labels"
     
     #Open Training files, get content and close files
@@ -203,3 +203,4 @@ def getKwordVecs(k=1):
     
     trainDataVecs = getAvgFeatureVecs( sentences[:k], model, num_features )
     return trainDataVecs
+

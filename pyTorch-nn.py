@@ -25,7 +25,7 @@ vec = getKwordVecs(k=N)
 #vec_tensor = torch.from_numpy(vec)
 
 ######
-train_labels = "traindata.labels"
+train_labels = "balanced_trainlabel.label"
 fpLabel = open(train_labels,'r')
 fpdata = fpLabel.read()
 fpLabel.close()
@@ -56,10 +56,13 @@ model = torch.nn.Sequential(
 
 # The nn package also contains definitions of popular loss functions; in this
 # case we will use Mean Squared Error (MSE) as our loss function.
-loss_fn = torch.nn.MSELoss(size_average=True)
+loss_fn = torch.nn.MSELoss()
 
-learning_rate = 5e-1
-for t in range(2000):
+learning_rate = 1e-4
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+
+for t in range(1000):
     # Forward pass: compute predicted y by passing x to the model. Module objects
     # override the __call__ operator so you can call them like functions. When
     # doing so you pass a Variable of input data to the Module and it produces
@@ -73,7 +76,7 @@ for t in range(2000):
     print(t, loss.data[0])
 
     # Zero the gradients before running the backward pass.
-    model.zero_grad()
+    optimizer.zero_grad()
 
     # Backward pass: compute gradient of the loss with respect to all the learnable
     # parameters of the model. Internally, the parameters of each Module are stored
@@ -86,3 +89,5 @@ for t in range(2000):
     for param in model.parameters():
         param.data -= learning_rate * param.grad.data
         
+model(x[23])
+
