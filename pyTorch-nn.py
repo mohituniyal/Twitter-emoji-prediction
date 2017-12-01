@@ -7,7 +7,7 @@ Created on Wed Nov 29 14:04:59 2017
 """
 
 # -*- coding: utf-8 -*-
-from __future__ import print_function
+#from __future__ import print_function
 import torch
 from torch.autograd import Variable
 import getKvecs
@@ -16,18 +16,18 @@ import codecs
 
 # N is batch size; D_in is input dimension;
 # H is hidden dimension; D_out is output dimension.
-N, D_in, H, D_out = 1000, 300, 10, 20
+N, D_in, H, D_out = 10000, 500, 500, 20
 
 ######### Our code ###########
 
 dtype = torch.FloatTensor
 
-w2v_model, vec = getKvecs.getKwordVecs(k=N,file_name="./traindata.text")
+w2v_model, vec = getKvecs.getKwordVecs(k=N,file_name="./balanced_traindata.text")
 
 #vec_tensor = torch.from_numpy(vec)
 
 ######
-train_labels = "traindata.label"
+train_labels = "balanced_trainlabel.label"
 fpLabel = open(train_labels,'r')
 fpdata = fpLabel.read()
 fpLabel.close()
@@ -60,7 +60,7 @@ model = torch.nn.Sequential(
 # case we will use Mean Squared Error (MSE) as our loss function.
 loss_fn = torch.nn.MSELoss()
 
-learning_rate = 1e-4
+learning_rate = 1e-3
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 
@@ -104,21 +104,35 @@ fpLabel.close()
 
 sentences = getKvecs.review_to_sentences(content,False)
 
-test_vec = getKvecs.getAvgFeatureVecs(sentences,w2v_model,300)
+test_vec = getKvecs.getAvgFeatureVecs(sentences,w2v_model,500)
 
 x_test = Variable(torch.from_numpy(test_vec), requires_grad=False)
 
 gold_labels = labels.split("\n")
 correct = 0
 count = 0
-
-for x in x_test:
-    pred = model(x)
+ind = []
+for x1 in x_test:
+    pred = model(x1)
     n = pred.data.numpy()
-    i=n.argmax()
-    if(i==int(gold_labels[count])):
+    ind= n.argsort()[-3:][::-1]
+    if(ind[0]==int(gold_labels[count]) or ind[1]==int(gold_labels[count]) or ind[2]==int(gold_labels[count])):
         correct +=1
     count+=1
+    
+correct = 0
+count = 0
+
+for x1 in x:
+    pred = model(x1)
+    n = pred.data.numpy()
+    ind= n.argsort()[-3:][::-1]
+    if(ind[0]==int(gold_labels[count]) or ind[1]==int(gold_labels[count]) or ind[2]==int(gold_labels[count])):
+        correct +=1
+    count+=1
+
+
+
 
 
 
