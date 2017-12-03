@@ -70,6 +70,12 @@ output, next_hidden = rnn(inp[0],hidden)
 pred_array = output.data.numpy()
 pred = pred_array.argmax(axis=1)
 
+cat = np.array([2])
+cat1 = Variable(torch.from_numpy(cat))
+
+criterion(output,cat1).backward()
+
+
 #########TRAINING################
 
 def oneTrainingExample(i):
@@ -78,7 +84,6 @@ def oneTrainingExample(i):
     category_tensor = Variable(torch.LongTensor([category]), requires_grad = False)
     line_tensor = Variable(torch.from_numpy(line), requires_grad = False)
     return category, line, category_tensor, line_tensor
-
 
 
 learning_rate = 0.005 # If you set this too high, it might explode. If too low, it might not learn
@@ -96,20 +101,21 @@ def train(category_tensor, line_tensor):
 
     # Add parameters' gradients to their values, multiplied by learning rate
     for p in rnn.parameters():
-        p.data.add_(-learning_rate, p.grad.data)
+        if type(p.grad)!=type(None):
+            p.data.add_(-learning_rate, p.grad.data)
 
     return output, loss.data[0]
 
 current_loss = 0
 all_losses = []
-n_iters = 100
+n_iters = 1000
 #
 #def categoryFromOutput(output):
 #    top_n, top_i = output.data.topk(1) # Tensor out of Variable with .data
 #    category_i = top_i[0][0]
 #    return all_categories[category_i], category_i
 
-
+yes = 0
 for iter in range(1, n_iters + 1):
     category, line, category_tensor, line_tensor = oneTrainingExample(iter)
     
@@ -119,14 +125,14 @@ for iter in range(1, n_iters + 1):
     current_loss += loss
 
     # Print iter number, loss, name and guess
-    if iter % 5 == 0:
+    if iter % 1 == 0:
         top_n, top_i = output.data.topk(3)
-        if category in top_i:
-            print "yes"
+        if category in top_i.numpy():
+            yes += 1
         #print('%d %d%% (%s) %.4f %s / %s %s' % (iter, iter / n_iters * 100, timeSince(start), loss, line, guess, correct))
-
+    
     # Add current loss avg to list of losses
     #if iter % plot_every == 0:
     #    all_losses.append(current_loss / plot_every)
     #    current_loss = 0
-    break;
+print "yes:",yes
