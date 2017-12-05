@@ -12,7 +12,7 @@ import numpy as np
 import getKvecs
 
 
-N, D_in, H, D_out = 10000, 500, 128, 20
+N, D_in, H, D_out = 10000, 512, 128, 20
 
 ######### Our code ###########
 
@@ -58,7 +58,7 @@ class RNN(nn.Module):
     def initHidden(self):
         return Variable(torch.zeros(1, self.hidden_size))
 
-n_hidden = 128
+#n_hidden = 128
 rnn = RNN(D_in, H, D_out)
 
 vec_reshaped = vec.reshape(N,1,D_in)
@@ -86,12 +86,12 @@ def oneTrainingExample(i):
     return category, line, category_tensor, line_tensor
 
 
-learning_rate = 0.005 # If you set this too high, it might explode. If too low, it might not learn
+learning_rate = 0.55 # If you set this too high, it might explode. If too low, it might not learn
 
 def train(category_tensor, line_tensor):
     hidden = rnn.initHidden()
 
-    #rnn.zero_grad()
+    rnn.zero_grad()
 
     for i in range(line_tensor.size()[0]):
         output, hidden = rnn(line_tensor, hidden)
@@ -106,33 +106,37 @@ def train(category_tensor, line_tensor):
 
     return output, loss.data[0]
 
-current_loss = 0
+
 all_losses = []
-n_iters = 1000
+training_data_size = 1000
+epochs = 100;
 #
 #def categoryFromOutput(output):
 #    top_n, top_i = output.data.topk(1) # Tensor out of Variable with .data
 #    category_i = top_i[0][0]
 #    return all_categories[category_i], category_i
-
-yes = 0
-for iter in range(1, n_iters + 1):
-    category, line, category_tensor, line_tensor = oneTrainingExample(iter)
+for i in range(epochs):
+    Acc = 0
+    current_loss = 0
+    for iter in range(0, training_data_size):
+        category, line, category_tensor, line_tensor = oneTrainingExample(iter)
+        
+        #category_tensor = n
+        #line_tensor = inp[0]
+        output, loss = train(category_tensor, line_tensor)
+        current_loss += loss
     
-    #category_tensor = n
-    #line_tensor = inp[0]
-    output, loss = train(category_tensor, line_tensor)
-    current_loss += loss
-
-    # Print iter number, loss, name and guess
-    if iter % 1 == 0:
-        top_n, top_i = output.data.topk(3)
-        if category in top_i.numpy():
-            yes += 1
-        #print('%d %d%% (%s) %.4f %s / %s %s' % (iter, iter / n_iters * 100, timeSince(start), loss, line, guess, correct))
-    
-    # Add current loss avg to list of losses
-    #if iter % plot_every == 0:
-    #    all_losses.append(current_loss / plot_every)
-    #    current_loss = 0
-print "yes:",yes
+        # Print iter number, loss, name and guess
+        if iter % 1 == 0:
+            top_n, top_i = output.data.topk(3)
+            if category in top_i.numpy():
+                Acc += 1
+            #print('%d %d%% (%s) %.4f %s / %s %s' % (iter, iter / n_iters * 100, timeSince(start), loss, line, guess, correct))
+        
+        # Add current loss avg to list of losses
+        #if iter % plot_every == 0:
+        #    all_losses.append(current_loss / plot_every)
+        #    current_loss = 0
+    print "Epoch:",i
+    print "Acc:",(float(Acc)/float(training_data_size))*100
+    print "loss:",current_loss/training_data_size
