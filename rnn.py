@@ -12,7 +12,7 @@ import numpy as np
 import getKvecs
 
 
-N, D_in, H, D_out = 100000, 128, 256, 20
+N, D_in, H, D_out = 180000, 128, 256, 20
 
 ######### Our code ###########
 
@@ -51,6 +51,7 @@ class RNN(nn.Module):
     def forward(self, input, hidden):
         combined = torch.cat((input, hidden), 1)
         hidden = self.i2h(combined)
+        hidden.tanh();
         output = self.i2o(combined)
         output = self.softmax(output)
         return output, hidden
@@ -87,7 +88,8 @@ def oneTrainingExample(i):
 
 
 learning_rate = 0.55 # If you set this too high, it might explode. If too low, it might not learn
-
+#optimizer = torch.optim.Adam(rnn.parameters(), lr=learning_rate)
+#optimizer = torch.optim.SGD(rnn.parameters(), lr=1e-4, momentum=0.9)
 def train(category_tensor, line_tensor):
     hidden = rnn.initHidden()
 
@@ -99,17 +101,19 @@ def train(category_tensor, line_tensor):
     loss = criterion(output, category_tensor)
     loss.backward()
 
-    # Add parameters' gradients to their values, multiplied by learning rate
+     #Add parameters' gradients to their values, multiplied by learning rate
     for p in rnn.parameters():
         if type(p.grad)!=type(None):
             p.data.add_(-learning_rate, p.grad.data)
 
+    #optimizer.step()
+    
     return output, loss.data[0]
 
 
 all_losses = []
-training_data_size = 100000
-epochs = 20;
+training_data_size = 180000
+epochs = 100;
 #
 #def categoryFromOutput(output):
 #    top_n, top_i = output.data.topk(1) # Tensor out of Variable with .data
@@ -140,3 +144,5 @@ for i in range(epochs):
     print "Epoch:",i
     print "Acc:",(float(Acc)/float(training_data_size))*100
     print "loss:",current_loss/training_data_size
+    
+rnn()
