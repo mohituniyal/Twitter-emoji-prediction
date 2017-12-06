@@ -5,29 +5,36 @@ Created on Tue Nov 21 15:32:22 2017
 
 @author: mohituniyal
 """
-
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Nov 20 11:00:21 2017
-
-@author: mohituniyal
-"""
-
 # Twitter emoji prediction 
-#from collections import defaultdict
-import nltk
-import codecs
+
+#import nltk
 from bs4 import BeautifulSoup
 import re
 from nltk.corpus import stopwords
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-import pandas as pd
-
-import nltk.data  
 from gensim.models import word2vec
+import unicodedata
+import string
 
+
+stop_words = stopwords.words('english')
+more_stop_words = [",",".",":","@","#",";","&","-","(",")","user","...", "!", "'s","?","--","|","``","''","[","]","'","$",]
+all_letters = string.ascii_letters + " .,;'"
+
+def unicodeToAscii(s):
+    return ''.join(
+            c for c in unicodedata.normalize('NFD', s)
+            if unicodedata.category(c) != 'Mn' and c in all_letters
+    )
+    
+stop_words_ascii = []
+for s in stop_words:
+    stop_words_ascii.append(unicodeToAscii(s))
+    
+stop_words_ascii.extend(more_stop_words)
+
+# Defining a set of ascii characters that we are going to keep
+printable = set(string.printable)
 
 # Define a function to split a review into into a list of words
 def review_to_wordlist( review, remove_stopwords=False ):
@@ -45,7 +52,7 @@ def review_to_wordlist( review, remove_stopwords=False ):
     #
     # 4. Optionally remove stop words (false by default)
     if remove_stopwords:
-        stops = set(stopwords.words("english"))
+        stops = set(stop_words_ascii)
         words = [w for w in words if not w in stops]
     #
     # 5. Return a list of words
@@ -56,15 +63,7 @@ def review_to_sentences( review, remove_stopwords=False ):
     # Function to split a review into parsed sentences. Returns a 
     # list of sentences, where each sentence is a list of words
     #
-    # 1. Use the NLTK tokenizer to split the paragraph into sentences
-    #raw_sentences1 = tokenizer.tokenize(review)
-    #print "old_len:",len(raw_sentences1)
     raw_sentences = review.split("\n")
-    #print "new_len:",len(raw_sentences)
-    # 2. Break sentences into separate 
-    #raw_sentences = raw_sentences.split("\n")
-    #
-    # 3. Loop over each sentence
     sentences = []
     counter = 0
     for raw_sentence in raw_sentences:
@@ -72,8 +71,7 @@ def review_to_sentences( review, remove_stopwords=False ):
         # If a sentence is empty, skip it
         if len(raw_sentence) > 0:
             # Otherwise, call review_to_wordlist to get a list of words
-            sentences.append( review_to_wordlist( raw_sentence, \
-              remove_stopwords ))
+            sentences.append( review_to_wordlist( raw_sentence, remove_stopwords ))
         if (counter%10000 == 0):
             print "Seen %d tweets"%counter
         
@@ -134,46 +132,48 @@ def getAvgFeatureVecs(reviews, model, num_features):
     return reviewFeatureVecs
 
 
-def getKwordVecs(k=1,file_name="balanced_traindata.text"):
+# Returns vectors for words
+# Params:   k : 
+#           num_feat : number of features in each word-vector
+#           train_file : file with training data
+#           test_file : file with training data
+#           val_file : file with training data
+def getKwordVecs(k=1,num_feat=512,train_file="balanced_traindata.text",test_file="",val_file=""):
     
-    # Initialize paths for training data set
-    train_data = file_name
-    #train_labels = "traindata.labels"
-    
-    #Open Training files, get content and close files
-    ftr_d = codecs.open(train_data,'r',encoding='utf-8')
-    #ftr_l = open(train_labels,'r')#,encoding='utf-8')
-    tr_data   = ftr_d.read()
-    #tr_labels = ftr_l.read()
-    ftr_d.close()
-    #ftr_l.close()
-    
-    print "All set with the files now"
-    
-    # Load the punkt tokenizer
-    #tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
-    
+    convert2vecs = []
     sentences = []  # Initialize an empty list of sentences
-    print "Parsing sentences from training set"
-    sentences = review_to_sentences(tr_data)
     
-    #print "len of sentences:",len(sentences)
+    # List the files we need to read
+    if train_file != "":
+        convert2vecs.append(train_file)
+    if test_file != "":
+        convert2vecs.append(test_file)        
+    if val_file != "":
+        convert2vecs.append(val_file)
     
-    #print sentences[0]
-    
+    for i in convert2vecs:
+        #Open Training files, get content and close files
+        f_d = open(i,'r')
+        t_data   = filter(lambda x: x in printable, f_d.read())
+        f_d.close()
+        
+        sentences.extend(review_to_sentences(t_data))
     
     ##### Training the word2vec model
     
     # Import the built-in logging module and configure it so that Word2Vec 
     # creates nice output messages
+    if sentences == []:
+        return "Error"
+        
     import logging
     logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',\
         level=logging.INFO)
     
     # Set values for various parameters
-    num_features = 128    # Word vector dimensionality                      
+    num_features = num_feat    # Word vector dimensionality                      
     min_word_count = 40   # Minimum word count                        
-    num_workers = 4       # Number of threads to run in parallel
+    num_workers = 10      # Number of threads to run in parallel
     context = 10          # Context window size                                                                                    
     downsampling = 1e-3   # Downsample setting for frequent words
     
@@ -197,10 +197,6 @@ def getKwordVecs(k=1,file_name="balanced_traindata.text"):
     # Calculate average feature vectors for training and testing sets,
     # using the functions we defined above. Notice that we now use stop word
     # removal.
-    #print "Creating average feature vecs for training set"
-    #clean_train_reviews = review_to_sentences( tr_data, tokenizer, \
-            #remove_stopwords=True )
     
     trainDataVecs = getAvgFeatureVecs( sentences[:k], w2v_model, num_features )
     return (w2v_model, trainDataVecs)
-
