@@ -12,7 +12,7 @@ import numpy as np
 import getKvecs
 
 
-N, D_in, H, D_out = 10000, 512, 128, 20
+N, D_in, H, D_out = 100000, 128, 256, 20
 
 ######### Our code ###########
 
@@ -108,8 +108,8 @@ def train(category_tensor, line_tensor):
 
 
 all_losses = []
-training_data_size = 1000
-epochs = 100;
+training_data_size = 100000
+epochs = 20;
 #
 #def categoryFromOutput(output):
 #    top_n, top_i = output.data.topk(1) # Tensor out of Variable with .data

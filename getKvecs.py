@@ -171,7 +171,7 @@ def getKwordVecs(k=1,file_name="balanced_traindata.text"):
         level=logging.INFO)
     
     # Set values for various parameters
-    num_features = 512    # Word vector dimensionality                      
+    num_features = 128    # Word vector dimensionality                      
     min_word_count = 40   # Minimum word count                        
     num_workers = 4       # Number of threads to run in parallel
     context = 10          # Context window size                                                                                    
