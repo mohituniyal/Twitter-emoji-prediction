@@ -5,8 +5,17 @@ Created on Tue Nov 21 15:32:22 2017
 
 @author: mohituniyal
 """
-# Twitter emoji prediction 
 
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Nov 20 11:00:21 2017
+
+@author: mohituniyal
+"""
+
+# Twitter emoji prediction 
+#from collections import defaultdict
 #import nltk
 from bs4 import BeautifulSoup
 import re
@@ -138,7 +147,7 @@ def getAvgFeatureVecs(reviews, model, num_features):
 #           train_file : file with training data
 #           test_file : file with training data
 #           val_file : file with training data
-def getKwordVecs(k=1,num_feat=512,train_file="balanced_traindata.text",test_file="",val_file=""):
+def getKwordVecs(k=1,num_feat=128,train_file="balanced_traindata.text",test_file="",val_file=""):
     
     convert2vecs = []
     sentences = []  # Initialize an empty list of sentences
@@ -197,6 +206,11 @@ def getKwordVecs(k=1,num_feat=512,train_file="balanced_traindata.text",test_file
     # Calculate average feature vectors for training and testing sets,
     # using the functions we defined above. Notice that we now use stop word
     # removal.
+    #print "Creating average feature vecs for training set"
+    #clean_train_reviews = review_to_sentences( tr_data, tokenizer, remove_stopwords=True )
     
-    trainDataVecs = getAvgFeatureVecs( sentences[:k], w2v_model, num_features )
-    return (w2v_model, trainDataVecs)
+    dataVecs = getAvgFeatureVecs( sentences, w2v_model, num_features )
+    if k == "full":
+        return (w2v_model, dataVecs)
+    else:
+        return (w2v_model, dataVecs[:k])
