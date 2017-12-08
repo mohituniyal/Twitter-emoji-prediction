@@ -1,43 +1,69 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
-"""
-Created on Sat Dec  2 14:49:07 2017
 
-@author: shruthi
-"""
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import numpy as np
 import getKvecs
+import random
 
 
-N, D_in, H, D_out = 180000, 128, 256, 20
-
-######### Our code ###########
-
+N, D_in, H, D_out = "full", 128, 256, 20
 dtype = torch.FloatTensor
 
-w2v_model, vec = getKvecs.getKwordVecs(k=N,file_name="./balanced_traindata.text")
+###############################################
 
-
-######
 train_labels = "balanced_trainlabel.label"
+#train_labels = traindata.label"
 fpLabel = open(train_labels,'r')
-fpdata = fpLabel.read()
+fpdatastore = fpLabel.read()
 fpLabel.close()
-fpdata = fpdata.split("\n")[:N]
-label_arr = np.zeros((N,D_out),dtype=float)
+fpdata = []
+for i in fpdatastore.strip().split("\n"):
+    fpdata.append(i)
+if N == "full":
+    N = len(fpdata)
+else:
+    fpdata = fpdata[:N]
+
+label_arr_tr = np.zeros((N,D_out),dtype=float)
+#Making one-hot vectors for our data
 for i in range(N):
-    label_arr[i][int(fpdata[i])] = 1
-###############################
+    label_arr_tr[i][int(fpdata[i])] = 1
 
 
-x = Variable(torch.from_numpy(vec), requires_grad=False)
-y = Variable(torch.from_numpy(label_arr).type(dtype), requires_grad=False)
+###############################################
+             
+test_labels = "testdata.labels"
+feLabel = open(test_labels,'r')
+fedata = feLabel.read()
+feLabel.close()
+fedata = fedata.strip().split("\n")
+te_N = len(fedata)
+label_arr_te = np.zeros((te_N,D_out),dtype=float)
+for i in range(te_N):
+    label_arr_te[i][int(fedata[i])] = 1
+
+
+###############################################
+
+######### Get word vec code ###################
+
+w2v_model, vec = getKvecs.getKwordVecs(k="full",num_feat=D_in,train_file="./balanced_traindata.text",test_file="./testdata.text")
+
+###############################################
+
+#x = Variable(torch.from_numpy(vec), requires_grad=False)
+#y = Variable(torch.from_numpy(label_arr_tr).type(dtype), requires_grad=False)
 
 criterion = nn.NLLLoss()
 
+#########################################
+#   class RNN                           #
+#   RNN class definintion               #
+#                                       #
+#########################################
 class RNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(RNN, self).__init__()
@@ -51,7 +77,7 @@ class RNN(nn.Module):
     def forward(self, input, hidden):
         combined = torch.cat((input, hidden), 1)
         hidden = self.i2h(combined)
-        hidden.tanh();
+        #hidden.tanh();
         output = self.i2o(combined)
         output = self.softmax(output)
         return output, hidden
@@ -62,8 +88,8 @@ class RNN(nn.Module):
 #n_hidden = 128
 rnn = RNN(D_in, H, D_out)
 
-vec_reshaped = vec.reshape(N,1,D_in)
-inp = Variable(torch.from_numpy(vec_reshaped),  requires_grad=False)
+vec_reshaped = vec[:N].reshape(N,1,D_in)
+inp = Variable(torch.from_numpy(vec_reshaped), requires_grad=False)
 
 hidden = Variable(torch.zeros(1, H), requires_grad = True)
 output, next_hidden = rnn(inp[0],hidden)
@@ -76,9 +102,16 @@ cat1 = Variable(torch.from_numpy(cat))
 
 criterion(output,cat1).backward()
 
-
 #########TRAINING################
-
+#########################################
+#   def oneTrainingExample              #
+#   Function to return values for one   #
+#   training example                    #
+#                                       #
+#   Input: i = int val: index of tr     #
+#                      example          #
+#   Returns: tensor variable            #
+#########################################
 def oneTrainingExample(i):
     category = int(fpdata[i])
     line = vec[i].reshape(1,D_in)
@@ -86,16 +119,46 @@ def oneTrainingExample(i):
     line_tensor = Variable(torch.from_numpy(line), requires_grad = False)
     return category, line, category_tensor, line_tensor
 
+#########################################
+#   def oneTestExample                  #
+#   Function to return values for one   #
+#   test example                        #
+#                                       #
+#   Input: i = int val: index of te     #
+#                      example          #
+#   Returns: tensor variable            #
+#########################################
+def oneTestExample(i):
+    category = int(fedata[i])
+    line = vec[N+i].reshape(1,D_in)
+    category_tensor = Variable(torch.LongTensor([category]), requires_grad = False)
+    line_tensor = Variable(torch.from_numpy(line), requires_grad = False)
+    return category, line, category_tensor, line_tensor
 
-learning_rate = 0.55 # If you set this too high, it might explode. If too low, it might not learn
+# If you set this too high, it might explode. If too low, it might not learn
+learning_rate = 0.55 
 #optimizer = torch.optim.Adam(rnn.parameters(), lr=learning_rate)
 #optimizer = torch.optim.SGD(rnn.parameters(), lr=1e-4, momentum=0.9)
+
+#########################################
+#   def train                           #
+#   Function to train the model for     #
+#   a single training example           #
+#                                       #
+#   Input: training size = Either "all" #
+#                          or an int val#
+#          epochs = an Int val          #
+#   Returns: tensor variable            #
+#########################################
+
 def train(category_tensor, line_tensor):
     hidden = rnn.initHidden()
 
     rnn.zero_grad()
 
     for i in range(line_tensor.size()[0]):
+        #print line_tensor.size()
+        #print hidden.size()
         output, hidden = rnn(line_tensor, hidden)
 
     loss = criterion(output, category_tensor)
@@ -110,39 +173,137 @@ def train(category_tensor, line_tensor):
     
     return output, loss.data[0]
 
+#########################################
+#   def train_model                     #
+#   Function to train the model with    #
+#   given training size and epochs      #
+#                                       #
+#   Input: training size = Either "all" #
+#                          or an int val#
+#          epochs = an Int val          #
+#   Returns: tensor variable            #
+#########################################
+def train_model(training_data_size="all",epochs=5):
+    #all_losses = []
+    if training_data_size == "all":
+        training_data_size = N
+    if training_data_size > N:
+        return "Error: Can not train on more than %d training examples" %N
+    print "Training for epochs=%d with training examples=%d" %(epochs,training_data_size)
+    for i in range(epochs):
+        #Acc = 0
+        current_loss = 0
+        for tr_iter in range(training_data_size):
+            tr_iter_idx = random.randint(0,N-1)
+            category, line, category_tensor, line_tensor = oneTrainingExample(tr_iter_idx)
+            
+            output, loss = train(category_tensor, line_tensor)
+            current_loss += loss
+        
+            # Print iter number, loss, name and guess
+            #top_n, top_i = output.data.topk(3)
+            
+            #if category in top_i.numpy():
+            #    Acc += 1
+                #print('%d %d%% (%s) %.4f %s / %s %s' % (iter, iter / n_iters * 100, timeSince(start), loss, line, guess, correct))
+            
+            # Add current loss avg to list of losses
+            #if iter % plot_every == 0:
+            #    all_losses.append(current_loss / plot_every)
+            #    current_loss = 0
+        print "Epoch:",i
+        #print "Acc:",(float(Acc)/float(training_data_size))*100
+        print "loss:",current_loss/training_data_size
+        
 
-all_losses = []
-training_data_size = 180000
-epochs = 100;
-#
-#def categoryFromOutput(output):
-#    top_n, top_i = output.data.topk(1) # Tensor out of Variable with .data
-#    category_i = top_i[0][0]
-#    return all_categories[category_i], category_i
-for i in range(epochs):
-    Acc = 0
-    current_loss = 0
-    for iter in range(0, training_data_size):
-        category, line, category_tensor, line_tensor = oneTrainingExample(iter)
-        
-        #category_tensor = n
-        #line_tensor = inp[0]
-        output, loss = train(category_tensor, line_tensor)
-        current_loss += loss
+#########################################
+#   def evaluate                        #
+#   Function to predict the top 3       #
+#   emoji labels for the given text     #
+#                                       #
+#   Input:  tweet in tensor format      #
+#   Returns: output object              #
+#########################################
+def evaluate(line_tensor):
+    hidden = rnn.initHidden()
+
+    #for i in range(line_tensor.size()[0]):
+    #print line_tensor.size()
+    #print hidden.size()
+    output, _ = rnn(line_tensor, hidden)
+    #print "output-size:",output.size()
+    #print "output:",output
+
+    return output
     
-        # Print iter number, loss, name and guess
-        if iter % 1 == 0:
-            top_n, top_i = output.data.topk(3)
+
+#########################################
+#   def predict                         #
+#   Function to predict the top 3       #
+#   emoji labels for the given text     #
+#                                       #
+#   Input:  tweet string                #
+#   Returns: Top 3 emoji labels         #
+#########################################
+
+def predict(line):
+    #listline = list([line])
+    sent = getKvecs.review_to_sentences(line)
+    linevec = getKvecs.getAvgFeatureVecs(sent, w2v_model, D_in)
+    print linevec
+    line_tensor = Variable(torch.from_numpy(linevec), requires_grad = False)
+    #return line_tensor
+    #print line_tensor.size()[0]
+    res = evaluate(line_tensor)
+    n,i = res.data.topk(3)
+    print "For tweet:",line," we got following labels:",i
+    
+    
+#########################################
+#   def getAcc                          #
+#   Function to get accuracy over the   #
+#   whole test set                      #
+#                                       #
+#   Input:  No arguments expected       #
+#   Returns: Returns accuracy value     #
+#########################################
+def getAcc(dataset = "test"):
+    acc = 0.0
+    if dataset == "test":
+        startpoint  =   N
+        endpoint    =   N+len(fedata)
+        test_vec    = vec[startpoint:endpoint]
+        for n_iter in xrange(len(test_vec)):
+            category, line, category_tensor, line_tensor = oneTestExample(n_iter)
+            output       = evaluate(line_tensor)
+            top_n, top_i    = output.data.topk(3)
+            if n_iter%1000 == 0:
+                print "Processed %d out of %d records" %(n_iter,len(test_vec))
             if category in top_i.numpy():
-                Acc += 1
-            #print('%d %d%% (%s) %.4f %s / %s %s' % (iter, iter / n_iters * 100, timeSince(start), loss, line, guess, correct))
-        
-        # Add current loss avg to list of losses
-        #if iter % plot_every == 0:
-        #    all_losses.append(current_loss / plot_every)
-        #    current_loss = 0
-    print "Epoch:",i
-    print "Acc:",(float(Acc)/float(training_data_size))*100
-    print "loss:",current_loss/training_data_size
-    
-rnn()
+                    acc += 1
+        return (acc/len(fedata))*100
+    else:
+        # Finding accuracy for training set
+        startpoint  =   0
+        endpoint    =   N
+        tr_vec    = vec[startpoint:endpoint]
+        for n_iter in xrange(len(tr_vec)):
+            category, line, category_tensor, line_tensor = oneTrainingExample(n_iter)
+            output       = evaluate(line_tensor)
+            top_n, top_i    = output.data.topk(3)
+            if n_iter%1000 == 0:
+                print "Processed %d out of %d records" %(n_iter,N)
+            if category in top_i.numpy():
+                    acc += 1
+        return (acc/N)*100
+
+#########################################
+#   Main                                #
+#                                       #
+#   Input:  No arguments expected       #
+#   Returns: No returns                 #
+#########################################
+
+train_model()
+getAcc()
+getAcc("train")
